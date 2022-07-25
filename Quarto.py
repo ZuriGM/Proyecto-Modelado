@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import copy
+from os import access
+from plistlib import InvalidFileException
 import threading
 import numpy as np
 import enum
@@ -10,16 +12,76 @@ import random
 # METODO A IMPLEMENTAR
 
 
+class Node:
+    def __init__(self, state, next_move=None, id=0, ):
+        self.id = id
+        self.parent = None
+        self.child_list: list[Node] = []
+        self.state = state
+        self.visited = 0
+        self.won_games = 0.0
+        self.games = 0.0
+        self.win_ratio = 0.0
+
+    def new_parent(self, parent):
+        self.parent = parent
+
+    def new_child(self, child):
+        self.child_list.append(child)
+
+    def calculate_wins(self):
+        self.win_ratio = self.won_games / self.games if self.games > 0 else 0.5
+
+
 def mcts(root, time_limit=0.25, exploitation=0.5):
+    tree_root = Node(root)
+    time_start = time.time()
+
+    while(time.time() - time_start < time_limit):
+        actual_node = tree_root
+        while(actual_node.state.has_finished() == 0):
+            random_number = random.random()
+            if(actual_node.visited == 0):
+                if(random_number > exploitation):
+                    actual_node = best_known_state(actual_node)
+            else:
+                actual_node = node_expansion(actual_node)
+                actual_node.visited = 1
+        actual_node.games += 1
+        if(actual_node.state.get_winner() == 1):
+            actual_node.won_games += 1
+        actual_node.calculate_wins()
+
+        while(tree_root != actual_node):
+            actual_node.parent.games += actual_node.games
+            actual_node.parent.won_games += actual_node.won_games
+            actual_node = actual_node.parent
+            actual_node.calculate_wins()
+
+    actual_node = tree_root
+    actual_node = best_known_state(actual_node)
+    return actual_node.action
+
+
+def node_expansion(node: Node):
+    possible_actions = node.state.get_available_actions()
+    random_id = int(random.randrange(0, len(possible_actions) + 1, 1))
+    action = possible_actions[random_id]
+    leaf = Node(node.state.do_action(action), action, random_id)
+    for index in node.child_list:
+        if index.id == leaf.id:
+            return index
+    leaf.new_parent(node)
+    node.new_child(leaf)
+    return leaf
+
     """while(root.has_finished() == False):
         if(root.get_available_actions() == False):
             randomNumber = random.random()
             if(randomNumber > exploitation):
                 root
-    """
 
-    """
-    while(time_limit < 0.25 || !has_finished(self))
+        while(time_limit < 0.25 || !has_finished(self))
         if(haSidoExploradoAntes)
             crearNumeroAleatorio
             if(numeroAleatorio > exploitation)
@@ -31,7 +93,18 @@ def mcts(root, time_limit=0.25, exploitation=0.5):
         if(esEstadoFinal)
             backPropagation
     """
-    return random.choice(root.get_available_actions())
+
+
+def best_known_state(actual_node: Node):
+    b_child = 0
+    b_prob = 0
+    print(actual_node.child_list)
+    for index in range(0, len(actual_node.child_list)):
+        print(index)
+        if(actual_node.child_list[index].win_ratio > b_prob):
+            b_child = index
+            b_prob = actual_node.child_list[index].win_ratio
+    return actual_node.child_list[b_child]
 
 
 ### DO NOT EDIT ###
