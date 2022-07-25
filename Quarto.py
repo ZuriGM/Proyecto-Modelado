@@ -15,10 +15,11 @@ import random
 class Node:
     def __init__(self, state, next_move=None, id=0, ):
         self.id = id
-        self.parent = None
+        self.action = next_move
+        self.parent: Node = None
         self.child_list: list[Node] = []
-        self.state = state
-        self.visited = 0
+        self.state: Quarto = state
+        self.visited = False
         self.won_games = 0.0
         self.games = 0.0
         self.win_ratio = 0.0
@@ -36,17 +37,18 @@ class Node:
 def mcts(root, time_limit=0.25, exploitation=0.5):
     tree_root = Node(root)
     time_start = time.time()
-
-    while(time.time() - time_start < time_limit):
+    run_time = 0
+    while(run_time < time_limit):
         actual_node = tree_root
-        while(actual_node.state.has_finished() == 0):
+        while(actual_node.state.has_finished() == False):
             random_number = random.random()
-            if(actual_node.visited == 0):
+            if(actual_node.visited == True):
+                print("entra")
                 if(random_number > exploitation):
                     actual_node = best_known_state(actual_node)
             else:
+                actual_node.visited = True
                 actual_node = node_expansion(actual_node)
-                actual_node.visited = 1
         actual_node.games += 1
         if(actual_node.state.get_winner() == 1):
             actual_node.won_games += 1
@@ -57,15 +59,18 @@ def mcts(root, time_limit=0.25, exploitation=0.5):
             actual_node.parent.won_games += actual_node.won_games
             actual_node = actual_node.parent
             actual_node.calculate_wins()
-
+        time_end = time.time()
+        run_time = time_end - time_start
     actual_node = tree_root
     actual_node = best_known_state(actual_node)
+
     return actual_node.action
 
 
 def node_expansion(node: Node):
     possible_actions = node.state.get_available_actions()
-    random_id = int(random.randrange(0, len(possible_actions) + 1, 1))
+    #random_id = int(random.randrange(0, len(possible_actions) + 1, 1))
+    random_id = random.randint(0, len(possible_actions) - 1)
     action = possible_actions[random_id]
     leaf = Node(node.state.do_action(action), action, random_id)
     for index in node.child_list:
@@ -98,9 +103,8 @@ def node_expansion(node: Node):
 def best_known_state(actual_node: Node):
     b_child = 0
     b_prob = 0
-    print(actual_node.child_list)
-    for index in range(0, len(actual_node.child_list)):
-        print(index)
+
+    for index in range(len(actual_node.child_list)):
         if(actual_node.child_list[index].win_ratio > b_prob):
             b_child = index
             b_prob = actual_node.child_list[index].win_ratio
@@ -434,4 +438,4 @@ class mainWindow():
 
 if __name__ == "__main__":
     # Modify call: use custom AI function
-    x = mainWindow(mcts)
+    x = mainWindow(aiAction=mcts)
